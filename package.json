@@ -18,7 +18,8 @@
     "lint:fix": "next lint --fix",
     "preview": "next build && next start",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
@@ -35,6 +36,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.0.15",
     "@types/node": "^20.14.10",
@@ -42,6 +45,8 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
