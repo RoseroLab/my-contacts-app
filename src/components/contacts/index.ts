@@ -5,3 +5,4 @@ export { ErrorState } from "./ErrorState";
 export { ContactForm, type ContactFormData } from "./ContactForm";
 export { CreateContactDialog } from "./CreateContactDialog";
 export { EditContactDialog } from "./EditContactDialog";
+export { DeleteContactDialog } from "./DeleteContactDialog";

@@ -13,15 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -30,7 +21,7 @@ import {
 interface ContactsTableProps {
   contacts: Contact[];
   onEdit?: (contact: Contact) => void;
-  onDelete?: (contactId: number) => void;
+  onDelete?: (contact: Contact) => void;
   isDeleting?: boolean;
 }
 
@@ -103,43 +94,19 @@ export function ContactsTable({
                   )}
 
                   {onDelete && (
-                    <Dialog>
-                      <Tooltip>
-                        <DialogTrigger asChild>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={isDeleting}
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                        </DialogTrigger>
-                        <TooltipContent>Delete contact</TooltipContent>
-                      </Tooltip>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Delete Contact</DialogTitle>
-                          <DialogDescription>
-                            Are you sure you want to delete {contact.firstName}{" "}
-                            {contact.lastName}? This action cannot be undone.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                          <DialogTrigger asChild>
-                            <Button variant="outline">Cancel</Button>
-                          </DialogTrigger>
-                          <Button
-                            variant="destructive"
-                            onClick={() => onDelete(contact.id)}
-                            disabled={isDeleting}
-                          >
-                            {isDeleting ? "Deleting..." : "Delete"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isDeleting}
+                          onClick={() => onDelete(contact)}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete contact</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               </TableCell>
