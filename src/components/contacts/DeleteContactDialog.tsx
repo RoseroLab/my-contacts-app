@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useContactCache } from "@/hooks/useContactCache";
+import { CONTACT_CONSTANTS } from "@/constants/contacts";
 
 interface DeleteContactDialogProps {
   contact: Contact | null;
@@ -27,50 +29,22 @@ export function DeleteContactDialog({
   onOpenChange,
   onSuccess,
 }: DeleteContactDialogProps) {
-  const utils = api.useUtils();
+  const { invalidateContacts, optimisticDelete, revertOptimisticDelete } =
+    useContactCache();
 
   const deleteContactMutation = api.contact.delete.useMutation({
     onMutate: async (deletedContact) => {
-      // Cancel outgoing refetches
-      await utils.contact.list.cancel();
-
-      // Snapshot the previous value
-      const previousContacts = utils.contact.list.getData({
-        search: undefined,
-        limit: 50,
-        offset: 0,
-      });
-
-      // Optimistically remove the contact from the cache
-      utils.contact.list.setData(
-        { search: undefined, limit: 50, offset: 0 },
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            contacts: oldData.contacts.filter(
-              (c) => c.id !== deletedContact.id,
-            ),
-            totalCount: oldData.totalCount - 1,
-          };
-        },
-      );
-
-      return { previousContacts, deletedContactId: deletedContact.id };
+      return await optimisticDelete(deletedContact.id);
     },
     onSuccess: async () => {
-      await utils.contact.invalidate();
+      await invalidateContacts();
       onOpenChange(false);
-      toast.success("Contact deleted successfully!");
+      toast.success(CONTACT_CONSTANTS.MESSAGES.SUCCESS.DELETED);
       onSuccess?.();
     },
     onError: (error, _variables, context) => {
-      // Revert optimistic update on error
       if (context?.previousContacts) {
-        utils.contact.list.setData(
-          { search: undefined, limit: 50, offset: 0 },
-          context.previousContacts,
-        );
+        revertOptimisticDelete(context.previousContacts);
       }
       toast.error(error.message);
     },
@@ -91,22 +65,26 @@ export function DeleteContactDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Contact</DialogTitle>
+          <DialogTitle>{CONTACT_CONSTANTS.TITLES.DELETE_DIALOG}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete {contact.firstName}{" "}
-            {contact.lastName}? This action cannot be undone.
+            {CONTACT_CONSTANTS.DESCRIPTIONS.DELETE_DIALOG(
+              contact.firstName,
+              contact.lastName,
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
+            {CONTACT_CONSTANTS.BUTTONS.CANCEL}
           </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
             disabled={deleteContactMutation.isPending}
           >
-            {deleteContactMutation.isPending ? "Deleting..." : "Delete"}
+            {deleteContactMutation.isPending
+              ? CONTACT_CONSTANTS.BUTTONS.DELETING
+              : CONTACT_CONSTANTS.BUTTONS.DELETE}
           </Button>
         </DialogFooter>
       </DialogContent>

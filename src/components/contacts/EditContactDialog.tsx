@@ -11,7 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ContactForm, type ContactFormData } from "./ContactForm";
+import { ContactForm } from "./ContactForm";
+import { useContactCache } from "@/hooks/useContactCache";
+import { CONTACT_CONSTANTS, type ContactFormData } from "@/constants/contacts";
 
 interface EditContactDialogProps {
   contact: Contact;
@@ -26,62 +28,27 @@ export function EditContactDialog({
   onOpenChange,
   onSuccess,
 }: EditContactDialogProps) {
-  const utils = api.useUtils();
+  const { invalidateContacts, optimisticUpdate, revertOptimisticUpdate } =
+    useContactCache();
 
   const updateContactMutation = api.contact.update.useMutation({
     onMutate: async (updatedContact) => {
-      // Cancel outgoing refetches
-      await utils.contact.list.cancel();
-
-      // Snapshot the previous value
-      const previousContacts = utils.contact.list.getData({
-        search: undefined,
-        limit: 50,
-        offset: 0,
-      });
-
-      // Create optimistic updated contact
-      const optimisticContact = {
-        ...contact,
-        firstName: updatedContact.firstName,
-        lastName: updatedContact.lastName,
-        email: updatedContact.email,
-        phone: updatedContact.phone ?? null,
-        company: updatedContact.company ?? null,
-        updatedAt: new Date(),
-      };
-
-      // Optimistically update the cache
-      utils.contact.list.setData(
-        { search: undefined, limit: 50, offset: 0 },
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            contacts: oldData.contacts.map((c) =>
-              c.id === contact.id ? optimisticContact : c,
-            ),
-          };
-        },
-      );
-
-      return { previousContacts, optimisticContact };
+      return await optimisticUpdate(contact, updatedContact);
     },
-    onSuccess: async (contact) => {
-      await utils.contact.invalidate();
+    onSuccess: async (updatedContact) => {
+      await invalidateContacts();
       onOpenChange(false);
       toast.success(
-        `Contact ${contact.firstName} ${contact.lastName} updated successfully!`,
+        CONTACT_CONSTANTS.MESSAGES.SUCCESS.UPDATED(
+          updatedContact.firstName,
+          updatedContact.lastName,
+        ),
       );
       onSuccess?.();
     },
     onError: (error, _variables, context) => {
-      // Revert optimistic update on error
       if (context?.previousContacts) {
-        utils.contact.list.setData(
-          { search: undefined, limit: 50, offset: 0 },
-          context.previousContacts,
-        );
+        revertOptimisticUpdate(context.previousContacts);
       }
       toast.error(error.message);
     },
@@ -102,10 +69,12 @@ export function EditContactDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Contact</DialogTitle>
+          <DialogTitle>{CONTACT_CONSTANTS.TITLES.EDIT_DIALOG}</DialogTitle>
           <DialogDescription>
-            Update the contact information for {contact.firstName}{" "}
-            {contact.lastName}.
+            {CONTACT_CONSTANTS.DESCRIPTIONS.EDIT_DIALOG(
+              contact.firstName,
+              contact.lastName,
+            )}
           </DialogDescription>
         </DialogHeader>
         <ContactForm
@@ -113,7 +82,7 @@ export function EditContactDialog({
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           isSubmitting={updateContactMutation.isPending}
-          submitLabel="Update Contact"
+          submitLabel={CONTACT_CONSTANTS.BUTTONS.UPDATE}
         />
         {updateContactMutation.error && (
           <div className="bg-destructive/15 rounded-md p-3">

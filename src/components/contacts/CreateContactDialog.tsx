@@ -14,7 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ContactForm, type ContactFormData } from "./ContactForm";
+import { ContactForm } from "./ContactForm";
+import { useContactCache } from "@/hooks/useContactCache";
+import { CONTACT_CONSTANTS, type ContactFormData } from "@/constants/contacts";
 
 interface CreateContactDialogProps {
   onSuccess?: () => void;
@@ -26,64 +28,25 @@ export function CreateContactDialog({
   trigger,
 }: CreateContactDialogProps) {
   const [open, setOpen] = useState(false);
-  const utils = api.useUtils();
+  const { invalidateContacts, optimisticCreate, revertOptimisticCreate } =
+    useContactCache();
 
   const createContactMutation = api.contact.create.useMutation({
-    onMutate: async (newContact) => {
-      // Cancel outgoing refetches
-      await utils.contact.list.cancel();
-
-      // Create optimistic contact with temporary ID
-      const optimisticContact = {
-        id: Date.now(), // Temporary ID
-        firstName: newContact.firstName,
-        lastName: newContact.lastName,
-        email: newContact.email,
-        phone: newContact.phone ?? null,
-        company: newContact.company ?? null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Optimistically update the cache
-      utils.contact.list.setData(
-        { search: undefined, limit: 50, offset: 0 },
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            contacts: [optimisticContact, ...oldData.contacts],
-            totalCount: oldData.totalCount + 1,
-          };
-        },
-      );
-
-      return { optimisticContact };
-    },
+    onMutate: optimisticCreate,
     onSuccess: async (contact) => {
-      await utils.contact.invalidate();
+      await invalidateContacts();
       setOpen(false);
       toast.success(
-        `Contact ${contact.firstName} ${contact.lastName} created successfully!`,
+        CONTACT_CONSTANTS.MESSAGES.SUCCESS.CREATED(
+          contact.firstName,
+          contact.lastName,
+        ),
       );
       onSuccess?.();
     },
     onError: (error, _variables, context) => {
-      // Revert optimistic update on error
       if (context?.optimisticContact) {
-        utils.contact.list.setData(
-          { search: undefined, limit: 50, offset: 0 },
-          (oldData) => {
-            if (!oldData) return oldData;
-            return {
-              ...oldData,
-              contacts: oldData.contacts.filter(
-                (contact) => contact.id !== context.optimisticContact.id,
-              ),
-              totalCount: oldData.totalCount - 1,
-            };
-          },
-        );
+        revertOptimisticCreate(context.optimisticContact);
       }
       toast.error(error.message);
     },
@@ -100,7 +63,7 @@ export function CreateContactDialog({
   const defaultTrigger = (
     <Button className="gap-2">
       <PlusIcon className="h-4 w-4" />
-      Add Contact
+      {CONTACT_CONSTANTS.LABELS.ADD_CONTACT}
     </Button>
   );
 
@@ -109,17 +72,16 @@ export function CreateContactDialog({
       <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Contact</DialogTitle>
+          <DialogTitle>{CONTACT_CONSTANTS.TITLES.CREATE_DIALOG}</DialogTitle>
           <DialogDescription>
-            Add a new contact to your directory. Fill in the required fields and
-            any optional information.
+            {CONTACT_CONSTANTS.DESCRIPTIONS.CREATE_DIALOG}
           </DialogDescription>
         </DialogHeader>
         <ContactForm
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           isSubmitting={createContactMutation.isPending}
-          submitLabel="Create Contact"
+          submitLabel={CONTACT_CONSTANTS.BUTTONS.CREATE}
         />
         {createContactMutation.error && (
           <div className="bg-destructive/15 rounded-md p-3">
