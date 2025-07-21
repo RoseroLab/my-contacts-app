@@ -1,6 +1,17 @@
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { env } from "@/env";
+
+// Helper function to add artificial delay for testing loading states
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Helper to safely get delay value
+const getDelayMs = (): number => {
+   
+  const delayMs = env.TRPC_DELAY_MS;
+  return typeof delayMs === "number" ? delayMs : 0;
+};
 
 export const contactRouter = createTRPCRouter({
   // Get all contacts with optional search and pagination
@@ -13,6 +24,11 @@ export const contactRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const delayMs = getDelayMs();
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+
       const { search, limit, offset } = input;
 
       const where = search
@@ -48,6 +64,11 @@ export const contactRouter = createTRPCRouter({
   getById: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
+      const delayMs = getDelayMs();
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+
       const contact = await ctx.db.contact.findUnique({
         where: { id: input.id },
       });
@@ -86,6 +107,11 @@ export const contactRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const delayMs = getDelayMs();
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+
       try {
         const contact = await ctx.db.contact.create({
           data: {
@@ -135,6 +161,11 @@ export const contactRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const delayMs = getDelayMs();
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+
       try {
         const contact = await ctx.db.contact.update({
           where: { id: input.id },
@@ -163,6 +194,11 @@ export const contactRouter = createTRPCRouter({
   delete: publicProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const delayMs = getDelayMs();
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+
       try {
         await ctx.db.contact.delete({
           where: { id: input.id },
@@ -179,6 +215,11 @@ export const contactRouter = createTRPCRouter({
 
   // Get contact statistics
   getStats: publicProcedure.query(async ({ ctx }) => {
+    const delayMs = getDelayMs();
+    if (delayMs > 0) {
+      await delay(delayMs);
+    }
+
     const [totalContacts, contactsWithPhone, contactsWithCompany] =
       await Promise.all([
         ctx.db.contact.count(),
