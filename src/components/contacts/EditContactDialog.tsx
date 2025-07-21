@@ -29,6 +29,44 @@ export function EditContactDialog({
   const utils = api.useUtils();
 
   const updateContactMutation = api.contact.update.useMutation({
+    onMutate: async (updatedContact) => {
+      // Cancel outgoing refetches
+      await utils.contact.list.cancel();
+
+      // Snapshot the previous value
+      const previousContacts = utils.contact.list.getData({
+        search: undefined,
+        limit: 50,
+        offset: 0,
+      });
+
+      // Create optimistic updated contact
+      const optimisticContact = {
+        ...contact,
+        firstName: updatedContact.firstName,
+        lastName: updatedContact.lastName,
+        email: updatedContact.email,
+        phone: updatedContact.phone ?? null,
+        company: updatedContact.company ?? null,
+        updatedAt: new Date(),
+      };
+
+      // Optimistically update the cache
+      utils.contact.list.setData(
+        { search: undefined, limit: 50, offset: 0 },
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            contacts: oldData.contacts.map((c) =>
+              c.id === contact.id ? optimisticContact : c,
+            ),
+          };
+        },
+      );
+
+      return { previousContacts, optimisticContact };
+    },
     onSuccess: async (contact) => {
       await utils.contact.invalidate();
       onOpenChange(false);
@@ -37,7 +75,14 @@ export function EditContactDialog({
       );
       onSuccess?.();
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Revert optimistic update on error
+      if (context?.previousContacts) {
+        utils.contact.list.setData(
+          { search: undefined, limit: 50, offset: 0 },
+          context.previousContacts,
+        );
+      }
       toast.error(error.message);
     },
   });

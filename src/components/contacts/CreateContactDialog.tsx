@@ -29,6 +29,37 @@ export function CreateContactDialog({
   const utils = api.useUtils();
 
   const createContactMutation = api.contact.create.useMutation({
+    onMutate: async (newContact) => {
+      // Cancel outgoing refetches
+      await utils.contact.list.cancel();
+
+      // Create optimistic contact with temporary ID
+      const optimisticContact = {
+        id: Date.now(), // Temporary ID
+        firstName: newContact.firstName,
+        lastName: newContact.lastName,
+        email: newContact.email,
+        phone: newContact.phone ?? null,
+        company: newContact.company ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Optimistically update the cache
+      utils.contact.list.setData(
+        { search: undefined, limit: 50, offset: 0 },
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            contacts: [optimisticContact, ...oldData.contacts],
+            totalCount: oldData.totalCount + 1,
+          };
+        },
+      );
+
+      return { optimisticContact };
+    },
     onSuccess: async (contact) => {
       await utils.contact.invalidate();
       setOpen(false);
@@ -37,7 +68,23 @@ export function CreateContactDialog({
       );
       onSuccess?.();
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Revert optimistic update on error
+      if (context?.optimisticContact) {
+        utils.contact.list.setData(
+          { search: undefined, limit: 50, offset: 0 },
+          (oldData) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              contacts: oldData.contacts.filter(
+                (contact) => contact.id !== context.optimisticContact.id,
+              ),
+              totalCount: oldData.totalCount - 1,
+            };
+          },
+        );
+      }
       toast.error(error.message);
     },
   });

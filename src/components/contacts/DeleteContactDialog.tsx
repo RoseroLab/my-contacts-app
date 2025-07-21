@@ -30,13 +30,48 @@ export function DeleteContactDialog({
   const utils = api.useUtils();
 
   const deleteContactMutation = api.contact.delete.useMutation({
+    onMutate: async (deletedContact) => {
+      // Cancel outgoing refetches
+      await utils.contact.list.cancel();
+
+      // Snapshot the previous value
+      const previousContacts = utils.contact.list.getData({
+        search: undefined,
+        limit: 50,
+        offset: 0,
+      });
+
+      // Optimistically remove the contact from the cache
+      utils.contact.list.setData(
+        { search: undefined, limit: 50, offset: 0 },
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            contacts: oldData.contacts.filter(
+              (c) => c.id !== deletedContact.id,
+            ),
+            totalCount: oldData.totalCount - 1,
+          };
+        },
+      );
+
+      return { previousContacts, deletedContactId: deletedContact.id };
+    },
     onSuccess: async () => {
       await utils.contact.invalidate();
       onOpenChange(false);
       toast.success("Contact deleted successfully!");
       onSuccess?.();
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Revert optimistic update on error
+      if (context?.previousContacts) {
+        utils.contact.list.setData(
+          { search: undefined, limit: 50, offset: 0 },
+          context.previousContacts,
+        );
+      }
       toast.error(error.message);
     },
   });
