@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, RefreshCw } from "lucide-react";
 import { type Contact } from "@prisma/client";
 
 import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   ContactsTable,
   EmptyState,
@@ -20,6 +21,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const {
     data: contactsData,
@@ -33,6 +35,7 @@ export default function Home() {
   });
 
   const { data: stats } = api.contact.getStats.useQuery();
+  const utils = api.useUtils();
 
   const handleDelete = (contact: Contact) => {
     setDeletingContact(contact);
@@ -44,6 +47,20 @@ export default function Home() {
 
   const handleEditSuccess = () => {
     setEditingContact(null);
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      // Clear all contact-related cache
+      await utils.contact.invalidate();
+      // Force a fresh fetch
+      await refetch();
+    } catch (error) {
+      console.error("Failed to refresh:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const renderHeader = () => (
@@ -64,14 +81,27 @@ export default function Home() {
 
   const renderSearchBar = () => (
     <div className="mb-6">
-      <div className="relative max-w-sm">
-        <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
-        <Input
-          placeholder="Search contacts..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
+          <Input
+            placeholder="Search contacts..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleRefresh}
+          disabled={isLoading || isRefreshing}
+          className="shrink-0"
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${isLoading || isRefreshing ? "animate-spin" : ""}`}
+          />
+        </Button>
       </div>
     </div>
   );
