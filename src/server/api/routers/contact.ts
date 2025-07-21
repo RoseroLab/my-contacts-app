@@ -8,7 +8,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Helper to safely get delay value
 const getDelayMs = (): number => {
-   
+  console.log("delayed");
   const delayMs = env.TRPC_DELAY_MS;
   return typeof delayMs === "number" ? delayMs : 0;
 };
