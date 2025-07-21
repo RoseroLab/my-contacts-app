@@ -63,11 +63,26 @@ export const contactRouter = createTRPCRouter({
   create: publicProcedure
     .input(
       z.object({
-        firstName: z.string().min(1, "First name is required").max(100),
-        lastName: z.string().min(1, "Last name is required").max(100),
+        firstName: z
+          .string()
+          .min(2, "First name must be at least 2 characters")
+          .max(100),
+        lastName: z
+          .string()
+          .min(2, "Last name must be at least 2 characters")
+          .max(100),
         email: z.string().email("Invalid email address"),
-        phone: z.string().max(20).optional(),
-        company: z.string().max(100).optional(),
+        phone: z
+          .string()
+          .regex(/^[+]?[\d\s\-()]{10,}$/, "Invalid phone number format")
+          .optional()
+          .or(z.literal("")),
+        company: z
+          .string()
+          .min(2, "Company name must be at least 2 characters")
+          .max(100)
+          .optional()
+          .or(z.literal("")),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -97,11 +112,26 @@ export const contactRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.number(),
-        firstName: z.string().min(1, "First name is required").max(100),
-        lastName: z.string().min(1, "Last name is required").max(100),
+        firstName: z
+          .string()
+          .min(2, "First name must be at least 2 characters")
+          .max(100),
+        lastName: z
+          .string()
+          .min(2, "Last name must be at least 2 characters")
+          .max(100),
         email: z.string().email("Invalid email address"),
-        phone: z.string().max(20).optional(),
-        company: z.string().max(100).optional(),
+        phone: z
+          .string()
+          .regex(/^[+]?[\d\s\-()]{10,}$/, "Invalid phone number format")
+          .optional()
+          .or(z.literal("")),
+        company: z
+          .string()
+          .min(2, "Company name must be at least 2 characters")
+          .max(100)
+          .optional()
+          .or(z.literal("")),
       }),
     )
     .mutation(async ({ ctx, input }) => {
